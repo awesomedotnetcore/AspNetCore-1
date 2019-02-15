@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Builder
         public static IApplicationBuilder UseRazorComponents<TStartup>(
             this IApplicationBuilder builder)
         {
-            var options = builder.ApplicationServices.GetRequiredService<IOptions<RazorComponentsOptions>>().Value;
+            var options = builder.ApplicationServices.GetRequiredService<IOptions<RazorComponentsCircuitOptions>>().Value;
 
             // The use case for this flag is when developers want to add their own
             // SignalR middleware, e.g., when using Azure SignalR. By default we

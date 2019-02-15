@@ -12,31 +12,24 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
     /// <summary>
     /// A Server-Side Blazor implementation of <see cref="IUriHelper"/>.
     /// </summary>
-    public class RemoteUriHelper : UriHelperBase
+    public class CircuitUriHelper : RemoteUriHelper
     {
-        private readonly IJSRuntime _jsRuntime;
-
-        /// <summary>
-        /// Creates a new <see cref="RemoteUriHelper"/>.
-        /// </summary>
-        /// <param name="jsRuntime"></param>
-        public RemoteUriHelper(IJSRuntime jsRuntime)
+        public CircuitUriHelper()
         {
-            _jsRuntime = jsRuntime;
         }
 
         /// <summary>
-        /// Initializes the <see cref="RemoteUriHelper"/>.
+        /// Creates a new <see cref="CircuitUriHelper"/>.
         /// </summary>
-        /// <param name="uriAbsolute">The absolute URI of the current page.</param>
-        /// <param name="baseUriAbsolute">The absolute base URI of the current page.</param>
-        public void Initialize(string uriAbsolute, string baseUriAbsolute)
+        /// <param name="jsRuntime"></param>
+        public CircuitUriHelper(IJSRuntime jsRuntime) : base(jsRuntime)
         {
-            SetAbsoluteBaseUri(baseUriAbsolute);
-            SetAbsoluteUri(uriAbsolute);
-            TriggerOnLocationChanged();
+        }
 
-            _jsRuntime.InvokeAsync<object>(
+        public override void Initialize(string uriAbsolute, string baseUriAbsolute)
+        {
+            base.Initialize(uriAbsolute, baseUriAbsolute);
+            JsRuntime.InvokeAsync<object>(
                 Interop.EnableNavigationInterception,
                 typeof(RemoteUriHelper).Assembly.GetName().Name,
                 nameof(NotifyLocationChanged));
@@ -55,16 +48,10 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
                 throw new InvalidOperationException(message);
             }
 
-            var uriHelper = (RemoteUriHelper)circuit.Services.GetRequiredService<IUriHelper>();
+            var uriHelper = (CircuitUriHelper)circuit.Services.GetRequiredService<IUriHelper>();
 
             uriHelper.SetAbsoluteUri(uriAbsolute);
             uriHelper.TriggerOnLocationChanged();
-        }
-
-        /// <inheritdoc />
-        protected override void NavigateToCore(string uri, bool forceLoad)
-        {
-            _jsRuntime.InvokeAsync<object>(Interop.NavigateTo, uri, forceLoad);
         }
     }
 }

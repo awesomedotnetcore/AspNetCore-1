@@ -14,14 +14,5 @@ namespace Microsoft.AspNetCore.Components.Server.Builder
         /// Gets the collection of registered components.
         /// </summary>
         public ComponentsCollection Components { get; } = new ComponentsCollection();
-        /// <summary>
-        /// Gets or sets a flag to indicate whether to attach middleware for
-        /// communicating with interactive components via SignalR. Defaults
-        /// to true.
-        ///
-        /// If the value is set to false, the application must manually add
-        /// SignalR middleware with <see cref="BlazorHub"/>.
-        /// </summary>
-        public bool UseSignalRWithBlazorHub { get; set; } = true;
     }
 }

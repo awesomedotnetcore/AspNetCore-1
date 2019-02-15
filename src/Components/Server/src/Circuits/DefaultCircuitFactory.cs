@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Components.Browser;
 using Microsoft.AspNetCore.Components.Browser.Rendering;
 using Microsoft.AspNetCore.Components.Environment;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Server.Abstractions.Browser;
 using Microsoft.AspNetCore.Components.Server.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
@@ -32,17 +33,18 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
         public override CircuitHost CreateCircuitHost(HttpContext httpContext, IClientProxy client)
         {
             var scope = _scopeFactory.CreateScope();
-            var environment = scope.ServiceProvider.GetRequiredService<ComponentEnvironment>();
             var options = scope.ServiceProvider.GetRequiredService<IOptions<RazorComponentsOptions>>();
-
-            InitializeEnvironment(environment, client);
+            var jsRuntimeBase = scope.ServiceProvider.GetRequiredService<ServerJSRuntimeBase>();
+            var jSRuntime = new RemoteJSRuntime(client);
+            jsRuntimeBase.Initialize(jSRuntime);
+            var uriHelper = new CircuitUriHelper(jSRuntime);
 
             var rendererRegistry = new RendererRegistry();
             var dispatcher = Renderer.CreateDefaultDispatcher();
             var renderer = new RemoteRenderer(
                 scope.ServiceProvider,
                 rendererRegistry,
-                environment.JSRuntime,
+                jSRuntime,
                 client,
                 dispatcher,
                 _loggerFactory.CreateLogger<RemoteRenderer>());
@@ -57,23 +59,16 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
                 rendererRegistry,
                 renderer,
                 options.Value,
-                environment.JSRuntime,
+                jsRuntimeBase,
                 circuitHandlers);
 
             // Initialize per-circuit data that services need
 #pragma warning disable CS0618 // Type or member is obsolete
-            (circuitHost.Services.GetRequiredService<IJSRuntimeAccessor>() as DefaultJSRuntimeAccessor).JSRuntime = environment.JSRuntime;
+            (circuitHost.Services.GetRequiredService<IJSRuntimeAccessor>() as DefaultJSRuntimeAccessor).JSRuntime = jsRuntimeBase;
 #pragma warning restore CS0618 // Type or member is obsolete
             (circuitHost.Services.GetRequiredService<ICircuitAccessor>() as DefaultCircuitAccessor).Circuit = circuitHost.Circuit;
 
             return circuitHost;
-        }
-
-        private static void InitializeEnvironment(ComponentEnvironment environment, IClientProxy client)
-        {
-            environment.Name = ComponentEnvironment.Remote;
-            environment.JSRuntime = new RemoteJSRuntime(client);
-            environment.UriHelper = new RemoteUriHelper(environment.JSRuntime);
         }
     }
 }

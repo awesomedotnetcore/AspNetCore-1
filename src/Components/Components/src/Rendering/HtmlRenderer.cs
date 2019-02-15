@@ -50,7 +50,6 @@ namespace Microsoft.AspNetCore.Components.Rendering
         public async Task<IEnumerable<string>> RenderComponentAsync(Type componentType, ParameterCollection initialParameters)
         {
             var frames = await CreateInitialRenderAsync(componentType, initialParameters);
-
             if (frames.Count == 0)
             {
                 return Array.Empty<string>();

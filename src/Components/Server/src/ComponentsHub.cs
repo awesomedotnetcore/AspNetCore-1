@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Components.Server
             var circuitHost = _circuitFactory.CreateCircuitHost(Context.GetHttpContext(), Clients.Caller);
             circuitHost.UnhandledException += CircuitHost_UnhandledException;
 
-            var uriHelper = (RemoteUriHelper)circuitHost.Services.GetRequiredService<IUriHelper>();
+            var uriHelper = (CircuitUriHelper)circuitHost.Services.GetRequiredService<IUriHelper>();
             uriHelper.Initialize(uriAbsolute, baseUriAbsolute);
 
             // If initialization fails, this will throw. The caller will fail if they try to call into any interop API.

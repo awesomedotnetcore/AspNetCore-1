@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Components.Server.Builder
         /// </summary>
         public string Selector { get; internal set; }
 
-        internal void Deconstruct(out Type componentType, out string domElementSelector)
+        public void Deconstruct(out Type componentType, out string domElementSelector)
         {
             componentType = ComponentType;
             domElementSelector = Selector;

@@ -2,13 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Environment;
-using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewFeatures.RazorComponents;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.AspNetCore.Mvc.ViewFeatures
@@ -16,7 +15,7 @@ namespace Microsoft.AspNetCore.Mvc.ViewFeatures
     /// <summary>
     /// Extensions for rendering components.
     /// </summary>
-    public static class HtmlHelperComponentExtensions
+    public static class HtmlHelperRazorComponentExtensions
     {
         /// <summary>
         /// Renders the <typeparamref name="TComponent"/> <see cref="IComponent"/>.
@@ -51,23 +50,17 @@ namespace Microsoft.AspNetCore.Mvc.ViewFeatures
 
             var httpContext = htmlHelper.ViewContext.HttpContext;
             var serviceProvider = httpContext.RequestServices;
-            var prerrenderContext = serviceProvider.GetRequiredService<MvcPrerrenderingContext>();
-            var encoder = prerrenderContext.Encoder;
-            prerrenderContext.Environment.Name = ComponentEnvironment.Prerrender;
-            // Add our custom JSRuntime that throws upon invocation. We might need an option here to not throw or log a warning
-            // message instead.
-            prerrenderContext.Environment.JSRuntime = new UnsupportedJavaScriptRuntime();
-            prerrenderContext.Environment.UriHelper = new HttpUriHelper(httpContext);
+            var prerrendererFactory = serviceProvider.GetRequiredService<MvcRazorComponentPrerrendererFactory>();
+            var prerrenderer = prerrendererFactory.CreatePrerrenderer();
 
-            var dispatcher = Renderer.CreateDefaultDispatcher();
-            using (var htmlRenderer = new HtmlRenderer(serviceProvider, encoder.Encode, dispatcher))
+            var result =  await prerrenderer.PrerrenderComponentAsync(new ComponentPrerrenderingContext
             {
-                var result = await dispatcher.InvokeAsync(() => htmlRenderer.RenderComponentAsync<TComponent>(
-                    parameters == null ?
-                        ParameterCollection.Empty :
-                        ParameterCollection.FromDictionary(HtmlHelper.ObjectToDictionary(parameters))));
-                return new ComponentHtmlContent(result);
-            }
+                Context = httpContext,
+                ComponentType = typeof(TComponent),
+                Parameters = parameters == null ? ParameterCollection.Empty : ParameterCollection.FromDictionary(HtmlHelper.ObjectToDictionary(parameters))
+            });
+
+            return new ComponentHtmlContent(result);
         }
     }
 }
