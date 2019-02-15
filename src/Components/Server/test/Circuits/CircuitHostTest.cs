@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components.Browser;
 using Microsoft.AspNetCore.Components.Browser.Rendering;
+using Microsoft.AspNetCore.Components.Server.Builder;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -139,7 +140,7 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
                 clientProxy,
                 renderRegistry,
                 remoteRenderer,
-                configure: _ => { },
+                options: new RazorComponentsOptions(),
                 jsRuntime: jsRuntime,
                 handlers);
         }

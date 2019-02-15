@@ -15,7 +15,9 @@ namespace ComponentsApp.Server
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<CircuitHandler, LoggingCircuitHandler>();
-            services.AddRazorComponents<App.Startup>();
+            services.AddRazorComponents()
+                .AddComponent<App.App>();
+
             services.AddSingleton<WeatherForecastService, DefaultWeatherForecastService>();
         }
 

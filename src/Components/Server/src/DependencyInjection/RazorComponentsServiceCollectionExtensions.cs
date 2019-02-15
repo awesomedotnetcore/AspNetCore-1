@@ -3,10 +3,8 @@
 
 using System;
 using Microsoft.AspNetCore.Components.Environment;
-using Microsoft.AspNetCore.Components.Hosting;
-using Microsoft.AspNetCore.Components.Server;
+using Microsoft.AspNetCore.Components.Server.Builder;
 using Microsoft.AspNetCore.Components.Server.Circuits;
-using Microsoft.AspNetCore.Components.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -17,35 +15,11 @@ namespace Microsoft.Extensions.DependencyInjection
     public static class RazorComponentsServiceCollectionExtensions
     {
         /// <summary>
-        /// Adds Razor Component services to the service collection.
-        /// </summary>
-        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
-        /// <param name="startupType">A Razor Components project startup type.</param>
-        /// <returns>The <see cref="IServiceCollection"/>.</returns>
-        public static IServiceCollection AddRazorComponents(
-            this IServiceCollection services,
-            Type startupType)
-        {
-            if (services == null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
-
-            if (startupType == null)
-            {
-                throw new ArgumentNullException(nameof(startupType));
-            }
-
-            return AddRazorComponentsCore(services, startupType);
-        }
-
-        /// <summary>
         /// Adds Razor Component app services to the service collection.
         /// </summary>
         /// <param name="services">The <see cref="IServiceCollection"/>.</param>
-        /// <typeparam name="TStartup">A Components app startup type.</typeparam>
         /// <returns>The <see cref="IServiceCollection"/>.</returns>
-        public static IServiceCollection AddRazorComponents<TStartup>(
+        public static RazorComponentsBuilder AddRazorComponents(
             this IServiceCollection services)
         {
             if (services == null)
@@ -53,43 +27,14 @@ namespace Microsoft.Extensions.DependencyInjection
                 throw new ArgumentNullException(nameof(services));
             }
 
-            return AddRazorComponentsCore(services, typeof(TStartup));
+            return AddRazorComponentsCore(services);
         }
 
-        private static IServiceCollection AddRazorComponentsCore(
-            IServiceCollection services,
-            Type startupType)
+        private static RazorComponentsBuilder AddRazorComponentsCore(
+            IServiceCollection services)
         {
             AddStandardRazorComponentsServices(services);
-
-            if (startupType != null)
-            {
-                // Call TStartup's ConfigureServices method immediately
-                var startup = Activator.CreateInstance(startupType);
-                var wrapper = new ConventionBasedStartup(startup);
-                wrapper.ConfigureServices(services);
-
-                // Configure the circuit factory to call a startup action when each
-                // incoming connection is established. The startup action is "call
-                // TStartup's Configure method".
-                services.Configure<DefaultCircuitFactoryOptions>(circuitFactoryOptions =>
-                {
-                    var endpoint = ComponentsHub.DefaultPath; // TODO: allow configuring this
-                    if (circuitFactoryOptions.StartupActions.ContainsKey(endpoint))
-                    {
-                        throw new InvalidOperationException(
-                            "Multiple Components app entries are configured to use " +
-                            $"the same endpoint '{endpoint}'.");
-                    }
-
-                    circuitFactoryOptions.StartupActions.Add(endpoint, builder =>
-                    {
-                        wrapper.Configure(builder, builder.Services);
-                    });
-                });
-            }
-
-            return services;
+            return new RazorComponentsBuilder(services);
         }
 
         private static void AddStandardRazorComponentsServices(IServiceCollection services)

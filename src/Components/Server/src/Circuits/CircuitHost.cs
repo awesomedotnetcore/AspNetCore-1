@@ -6,8 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components.Browser;
 using Microsoft.AspNetCore.Components.Browser.Rendering;
-using Microsoft.AspNetCore.Components.Builder;
-using Microsoft.AspNetCore.Components.Hosting;
+using Microsoft.AspNetCore.Components.Server.Builder;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
@@ -19,9 +18,8 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
         private static readonly AsyncLocal<CircuitHost> _current = new AsyncLocal<CircuitHost>();
         private readonly IServiceScope _scope;
         private readonly CircuitHandler[] _circuitHandlers;
+        private readonly RazorComponentsOptions _options;
         private bool _initialized;
-
-        private Action<IComponentsApplicationBuilder> _configure;
 
         /// <summary>
         /// Gets the current <see cref="Circuit"/>, if any.
@@ -53,7 +51,7 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
             IClientProxy client,
             RendererRegistry rendererRegistry,
             RemoteRenderer renderer,
-            Action<IComponentsApplicationBuilder> configure,
+            RazorComponentsOptions options,
             IJSRuntime jsRuntime,
             CircuitHandler[] circuitHandlers)
         {
@@ -61,7 +59,7 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
             Client = client ?? throw new ArgumentNullException(nameof(client));
             RendererRegistry = rendererRegistry ?? throw new ArgumentNullException(nameof(rendererRegistry));
             Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
-            _configure = configure ?? throw new ArgumentNullException(nameof(configure));
+            _options = options ?? throw new ArgumentNullException(nameof(options));
             JSRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
 
             Services = scope.ServiceProvider;
@@ -93,13 +91,9 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
             {
                 SetCurrentCircuitHost(this);
 
-                var builder = new ServerSideComponentsApplicationBuilder(Services);
-
-                _configure(builder);
-
-                for (var i = 0; i < builder.Entries.Count; i++)
+                for (var i = 0; i < _options.Components.Count; i++)
                 {
-                    var (componentType, domElementSelector) = builder.Entries[i];
+                    var (componentType, domElementSelector) = _options.Components[i];
                     await Renderer.AddComponentAsync(componentType, domElementSelector);
                 }
 

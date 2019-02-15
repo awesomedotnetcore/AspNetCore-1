@@ -5,7 +5,9 @@ using System;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Components.Server.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNetCore.Builder
 {
@@ -23,27 +25,7 @@ namespace Microsoft.AspNetCore.Builder
         public static IApplicationBuilder UseRazorComponents<TStartup>(
             this IApplicationBuilder builder)
         {
-            return UseRazorComponents<TStartup>(builder, null);
-        }
-
-        /// <summary>
-        /// Adds middleware for serving interactive Razor Components.
-        /// </summary>
-        /// <param name="builder">The <see cref="IApplicationBuilder"/>.</param>
-        /// <param name="configure">A callback that can be used to configure the middleware.</param>
-        /// <typeparam name="TStartup">A components app startup type.</typeparam>
-        /// <returns>The <see cref="IApplicationBuilder"/>.</returns>
-        public static IApplicationBuilder UseRazorComponents<TStartup>(
-            this IApplicationBuilder builder,
-            Action<RazorComponentsOptions> configure)
-        {
-            if (builder == null)
-            {
-                throw new ArgumentNullException(nameof(builder));
-            }
-
-            var options = new RazorComponentsOptions();
-            configure?.Invoke(options);
+            var options = builder.ApplicationServices.GetRequiredService<IOptions<RazorComponentsOptions>>().Value;
 
             // The use case for this flag is when developers want to add their own
             // SignalR middleware, e.g., when using Azure SignalR. By default we

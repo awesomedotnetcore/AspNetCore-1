@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Components.Browser;
 using Microsoft.AspNetCore.Components.Browser.Rendering;
 using Microsoft.AspNetCore.Components.Environment;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Server.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,34 +19,22 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
     internal class DefaultCircuitFactory : CircuitFactory
     {
         private readonly IServiceScopeFactory _scopeFactory;
-        private readonly DefaultCircuitFactoryOptions _options;
         private readonly ILoggerFactory _loggerFactory;
 
         public DefaultCircuitFactory(
             IServiceScopeFactory scopeFactory,
-            IOptions<DefaultCircuitFactoryOptions> options,
             ILoggerFactory loggerFactory)
         {
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
-
             _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
-            _options = options.Value;
             _loggerFactory = loggerFactory;
         }
 
         public override CircuitHost CreateCircuitHost(HttpContext httpContext, IClientProxy client)
         {
-            if (!_options.StartupActions.TryGetValue(httpContext.Request.Path, out var config))
-            {
-                var message = $"Could not find an ASP.NET Core Components startup action for request path '{httpContext.Request.Path}'.";
-                throw new InvalidOperationException(message);
-            }
-
             var scope = _scopeFactory.CreateScope();
             var environment = scope.ServiceProvider.GetRequiredService<ComponentEnvironment>();
+            var options = scope.ServiceProvider.GetRequiredService<IOptions<RazorComponentsOptions>>();
+
             InitializeEnvironment(environment, client);
 
             var rendererRegistry = new RendererRegistry();
@@ -67,7 +56,7 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
                 client,
                 rendererRegistry,
                 renderer,
-                config,
+                options.Value,
                 environment.JSRuntime,
                 circuitHandlers);
 
