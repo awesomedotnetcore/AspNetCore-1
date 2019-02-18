@@ -2,10 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components.Browser;
 using Microsoft.AspNetCore.Components.Browser.Rendering;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Server.Builder;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +19,7 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
     {
         private static readonly AsyncLocal<CircuitHost> _current = new AsyncLocal<CircuitHost>();
         private readonly IServiceScope _scope;
+        private readonly IDispatcher _dispatcher;
         private readonly CircuitHandler[] _circuitHandlers;
         private readonly RazorComponentsOptions _options;
         private bool _initialized;
@@ -51,17 +54,19 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
             IClientProxy client,
             RendererRegistry rendererRegistry,
             RemoteRenderer renderer,
+            IDispatcher dispatcher,
             RazorComponentsOptions options,
             IJSRuntime jsRuntime,
             CircuitHandler[] circuitHandlers)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
-            Client = client ?? throw new ArgumentNullException(nameof(client));
+            _dispatcher = dispatcher;
+            Client = client;
             RendererRegistry = rendererRegistry ?? throw new ArgumentNullException(nameof(rendererRegistry));
             Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             JSRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
-
+            
             Services = scope.ServiceProvider;
 
             Circuit = new Circuit(this);
@@ -75,7 +80,7 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
 
         public Circuit Circuit { get; }
 
-        public IClientProxy Client { get; }
+        public IClientProxy Client { get; set; }
 
         public IJSRuntime JSRuntime { get; }
 
@@ -84,6 +89,17 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
         public RendererRegistry RendererRegistry { get; }
 
         public IServiceProvider Services { get; }
+
+        public Task<IEnumerable<string>> PrerrenderComponentAsync(Type componentType, ParameterCollection parameters)
+        {
+            return _dispatcher.InvokeAsync(async () =>
+            {
+                Renderer.StartPrerrender();
+                var result = await Renderer.RenderComponentAsync(componentType, parameters);
+                return result;
+            });
+        }
+
 
         public async Task InitializeAsync(CancellationToken cancellationToken)
         {

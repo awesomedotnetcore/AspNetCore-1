@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Builder
         /// <param name="builder">The <see cref="IApplicationBuilder"/>.</param>
         /// <typeparam name="TStartup">A components app startup type.</typeparam>
         /// <returns>The <see cref="IApplicationBuilder"/>.</returns>
-        public static IApplicationBuilder UseRazorComponents<TStartup>(
+        public static IApplicationBuilder UseRazorComponents(
             this IApplicationBuilder builder)
         {
             var options = builder.ApplicationServices.GetRequiredService<IOptions<RazorComponentsCircuitOptions>>().Value;
@@ -36,13 +36,11 @@ namespace Microsoft.AspNetCore.Builder
             }
 
             // Use embedded static content for /_framework
+            // Move to endpoint routing
             builder.Map("/_framework", frameworkBuilder =>
             {
                 UseFrameworkFiles(frameworkBuilder);
             });
-
-            // Use SPA fallback routing for anything else
-            builder.UseSpa(spa => { });
 
             return builder;
         }

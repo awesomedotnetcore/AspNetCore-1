@@ -5,6 +5,8 @@ using System;
 using System.Buffers;
 using System.Linq;
 using Microsoft.AspNetCore.Components.Environment;
+using Microsoft.AspNetCore.Components.Server;
+using Microsoft.AspNetCore.Components.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -18,6 +20,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Mvc.ViewFeatures.Buffers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures.Filters;
 using Microsoft.AspNetCore.Mvc.ViewFeatures.Infrastructure;
+using Microsoft.AspNetCore.Mvc.ViewFeatures.RazorComponents;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.JSInterop;
@@ -204,10 +207,9 @@ namespace Microsoft.Extensions.DependencyInjection
             //
             // Component prerrendering
             //
-            services.TryAddScoped<MvcPrerrenderingContext>();
-            services.TryAddScoped<ComponentEnvironment>();
-            services.TryAddScoped(sp => sp.GetRequiredService<ComponentEnvironment>().JSRuntime);
-            services.TryAddScoped(sp => sp.GetRequiredService<ComponentEnvironment>().UriHelper);
+            services.TryAddSingleton<IComponentPrerrenderer, MvcRazorComponentPrerrenderer>();
+            services.TryAddScoped<IUriHelper, HttpUriHelper>();
+            services.TryAddScoped<IJSRuntime, UnsupportedJavaScriptRuntime>();
 
             services.TryAddTransient<ControllerSaveTempDataPropertyFilter>();
 

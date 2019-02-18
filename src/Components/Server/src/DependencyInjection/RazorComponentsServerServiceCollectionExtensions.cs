@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Components.Server.Builder;
 using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -34,8 +35,11 @@ namespace Microsoft.Extensions.DependencyInjection
             // Components entrypoints, this lot is the same and repeated registrations are a no-op.
             services.TryAddSingleton<CircuitFactory, DefaultCircuitFactory>();
             services.TryAddScoped(s => s.GetRequiredService<ICircuitAccessor>().Circuit);
+#pragma warning disable CS0618 // Type or member is obsolete
+            services.TryAddScoped<IJSRuntimeAccessor, DefaultJSRuntimeAccessor>();
+#pragma warning restore CS0618 // Type or member is obsolete
             services.TryAddScoped<ICircuitAccessor, DefaultCircuitAccessor>();
-
+            services.AddScoped<IComponentPrerrenderer, CircuitPrerrenderer>();
             return builder;
         }
     }

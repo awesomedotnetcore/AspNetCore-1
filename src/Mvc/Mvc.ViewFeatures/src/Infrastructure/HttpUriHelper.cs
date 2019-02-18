@@ -10,11 +10,16 @@ namespace Microsoft.AspNetCore.Mvc.ViewFeatures
 {
     internal class HttpUriHelper : UriHelperBase
     {
-        private readonly HttpContext _context;
+        private HttpContext _context;
 
-        public HttpUriHelper(HttpContext context)
+        public HttpUriHelper()
+        {
+        }
+
+        public void InitializeState(HttpContext context)
         {
             _context = context;
+            InitializeState();
         }
 
         protected override void InitializeState()

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Text.Encodings.Web;
 using System.Threading;
 using System.Threading.Tasks;
 using MessagePack;
@@ -15,20 +16,23 @@ using Microsoft.JSInterop;
 
 namespace Microsoft.AspNetCore.Components.Browser.Rendering
 {
-    internal class RemoteRenderer : Renderer
+    internal class RemoteRenderer : HtmlRenderer
     {
         // The purpose of the timeout is just to ensure server resources are released at some
         // point if the client disconnects without sending back an ACK after a render
         private const int TimeoutMilliseconds = 60 * 1000;
 
         private readonly int _id;
-        private readonly IClientProxy _client;
+        private IClientProxy _client;
         private readonly IJSRuntime _jsRuntime;
         private readonly RendererRegistry _rendererRegistry;
         private readonly ConcurrentDictionary<long, AutoCancelTaskCompletionSource<object>> _pendingRenders
             = new ConcurrentDictionary<long, AutoCancelTaskCompletionSource<object>>();
         private readonly ILogger _logger;
         private long _nextRenderId = 1;
+
+        private TaskCompletionSource<object> _prerrenderCompletionSource;
+        private Task _prerrendering = Task.CompletedTask;
 
         /// <summary>
         /// Notifies when a rendering exception occured.
@@ -49,8 +53,9 @@ namespace Microsoft.AspNetCore.Components.Browser.Rendering
             IJSRuntime jsRuntime,
             IClientProxy client,
             IDispatcher dispatcher,
+            HtmlEncoder encoder,
             ILogger logger)
-            : base(serviceProvider, dispatcher)
+            : base(serviceProvider, encoder.Encode, dispatcher)
         {
             _rendererRegistry = rendererRegistry;
             _jsRuntime = jsRuntime;
@@ -97,6 +102,22 @@ namespace Microsoft.AspNetCore.Components.Browser.Rendering
             }
         }
 
+        internal void StartPrerrender()
+        {
+            // We try and capture all the serialized render batches
+            _prerrenderCompletionSource = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _prerrendering = _prerrenderCompletionSource.Task;
+        }
+
+        internal void ResumeRendering(IClientProxy proxy)
+        {
+            _client = proxy;
+            if (_prerrenderCompletionSource != null && !_prerrenderCompletionSource.Task.IsCompleted)
+            {
+                _prerrenderCompletionSource.SetResult(true);
+            }
+        }
+
         /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
@@ -125,12 +146,15 @@ namespace Microsoft.AspNetCore.Components.Browser.Rendering
             // the whole render with that exception
             try
             {
-                _client.SendAsync("JS.RenderBatch", _id, renderId, batchBytes).ContinueWith(sendTask =>
+                _prerrendering.ContinueWith(prerrenderTask =>
                 {
-                    if (sendTask.IsFaulted)
+                    _client.SendAsync("JS.RenderBatch", _id, renderId, batchBytes).ContinueWith(sendTask =>
                     {
-                        pendingRenderInfo.TrySetException(sendTask.Exception);
-                    }
+                        if (sendTask.IsFaulted)
+                        {
+                            pendingRenderInfo.TrySetException(sendTask.Exception);
+                        }
+                    });
                 });
             }
             catch (Exception syncException)

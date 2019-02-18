@@ -2,11 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.AspNetCore.Components.Server.Abstractions.Browser;
 using Microsoft.AspNetCore.Components.Server.Builder;
 using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Components.Services;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -35,8 +33,8 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static void AddStandardRazorComponentsServices(IServiceCollection services)
         {
-            services.TryAddScoped<IUriHelper, RemoteUriHelper>();
-            services.TryAddScoped<IJSRuntime, UnsupportedJSRuntime>();
+            services.AddScoped<IUriHelper, RemoteUriHelper>();
+            services.AddScoped<IJSRuntime, RemoteJSRuntime>();
         }
     }
 }

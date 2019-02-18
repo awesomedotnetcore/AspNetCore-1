@@ -50,8 +50,7 @@ namespace Microsoft.AspNetCore.Mvc.ViewFeatures
 
             var httpContext = htmlHelper.ViewContext.HttpContext;
             var serviceProvider = httpContext.RequestServices;
-            var prerrendererFactory = serviceProvider.GetRequiredService<MvcRazorComponentPrerrendererFactory>();
-            var prerrenderer = prerrendererFactory.CreatePrerrenderer();
+            var prerrenderer = serviceProvider.GetRequiredService<IComponentPrerrenderer>();
 
             var result =  await prerrenderer.PrerrenderComponentAsync(new ComponentPrerrenderingContext
             {

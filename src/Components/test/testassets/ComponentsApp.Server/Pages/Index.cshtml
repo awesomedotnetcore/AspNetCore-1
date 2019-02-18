@@ -1,0 +1,23 @@
+@page "/fetchdata/{*rest}"
+@addTagHelper *, ComponentsApp.App
+@using ComponentsApp.App
+@model ComponentsApp.Server.Pages.IndexModel
+@{
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width">
+    <title>Razor Components</title>
+    <base href="/" />
+    <link href="css/bootstrap/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/site.css" rel="stylesheet" />
+</head>
+<body>
+    <root>@(await Html.RenderComponentAsync<App>())</root>
+
+    <script src="_framework/components.server.js"></script>
+</body>
+</html>
+
