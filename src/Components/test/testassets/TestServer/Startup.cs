@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using BasicTestApp;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace TestServer
 {
@@ -49,7 +50,10 @@ namespace TestServer
                 // important that people can set up these bits of middleware manually (e.g., to
                 // swap in UseAzureSignalR instead of UseSignalR).
                 subdirApp.UseRouting(routes => routes.MapComponentsHub<Index>(ComponentsHub.DefaultPath, selector: "root"));
-                subdirApp.UseBlazor<BasicTestApp.Startup>();
+
+                subdirApp.MapWhen(
+                    ctx => ctx.Features.Get<IEndpointFeature>()?.Endpoint == null,
+                    blazorBuilder => blazorBuilder.UseBlazor<BasicTestApp.Startup>());
             });
         }
 
