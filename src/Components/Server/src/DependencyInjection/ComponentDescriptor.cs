@@ -3,21 +3,12 @@
 
 using System;
 
-namespace Microsoft.AspNetCore.Components.Server.Builder
+namespace Microsoft.AspNetCore.Components.Server
 {
-    /// <summary>
-    /// Describes a <see cref="IComponent"/>.
-    /// </summary>
-    public class ComponentDescriptor
+    internal class ComponentDescriptor
     {
-        /// <summary>
-        /// Gets or sets the <see cref="Type"/> of the <see cref="IComponent"/>.
-        /// </summary>
         public Type ComponentType { get; set; }
 
-        /// <summary>
-        /// Gets or sets dom element selector to be replaced by the component.
-        /// </summary>
         public string Selector { get; internal set; }
 
         public void Deconstruct(out Type componentType, out string domElementSelector)

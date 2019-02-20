@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
             _circuitFactory = circuitFactory;
         }
 
-        public Task<IEnumerable<string>> PrerrenderComponentAsync(ComponentPrerrenderingContext prerrenderingContext)
+        public async Task<IEnumerable<string>> PrerrenderComponentAsync(ComponentPrerrenderingContext prerrenderingContext)
         {
             var context = prerrenderingContext.Context;
             var circuitHost = _circuitFactory.CreateCircuitHost(
@@ -27,9 +27,19 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
                 GetFullUri(context.Request),
                 GetFullBaseUri(context.Request));
 
-            return circuitHost.PrerrenderComponentAsync(
+            // For right now we just do prerrendering and dispose the circuit. In the future we will keep the circuit around and
+            // reconnect to it from the ComponentsHub.
+            try
+            {
+                var result = await circuitHost.PrerrenderComponentAsync(
                 prerrenderingContext.ComponentType,
                 prerrenderingContext.Parameters);
+                return result;
+            }
+            finally
+            {
+                await circuitHost.DisposeAsync();
+            }
         }
 
         private string GetFullUri(HttpRequest request)

@@ -12,21 +12,12 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
     /// <summary>
     /// A Server-Side Blazor implementation of <see cref="IUriHelper"/>.
     /// </summary>
-    internal class RemoteUriHelper : UriHelperBase
+    public class RemoteUriHelper : UriHelperBase
     {
         private IJSRuntime _jsRuntime;
 
         public RemoteUriHelper()
         {
-        }
-
-        /// <summary>
-        /// Creates a new <see cref="RemoteUriHelper"/>.
-        /// </summary>
-        /// <param name="jsRuntime"></param>
-        public RemoteUriHelper(IJSRuntime jsRuntime)
-        {
-            _jsRuntime = jsRuntime;
         }
 
         /// <summary>
@@ -50,7 +41,7 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
         /// <param name="jsRuntime">The <see cref="IJSRuntime"/> to use for interoperability.</param>
         public void Initialize(string uriAbsolute, string baseUriAbsolute, IJSRuntime jsRuntime)
         {
-            if (jsRuntime != null && _jsRuntime != jsRuntime)
+            if (_jsRuntime != null)
             {
                 throw new InvalidOperationException("JavaScript runtime already initialized.");
             }
@@ -59,16 +50,10 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
 
             Initialize(uriAbsolute, baseUriAbsolute);
 
-            try
-            {
-                _jsRuntime.InvokeAsync<object>(
+            _jsRuntime.InvokeAsync<object>(
                     Interop.EnableNavigationInterception,
                     typeof(RemoteUriHelper).Assembly.GetName().Name,
                     nameof(NotifyLocationChanged));
-            }
-            catch
-            {
-            }
         }
 
 
@@ -93,6 +78,10 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
 
         protected override void NavigateToCore(string uri, bool forceLoad)
         {
+            if (_jsRuntime == null)
+            {
+                throw new InvalidOperationException("JavaScript runtime already initialized.");
+            }
             _jsRuntime.InvokeAsync<object>(Interop.NavigateTo, uri, forceLoad);
         }
     }

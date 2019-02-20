@@ -1,5 +1,4 @@
-@page "/fetchdata/{*rest}"
-@addTagHelper *, ComponentsApp.App
+@page "{*rest}"
 @using ComponentsApp.App
 @model ComponentsApp.Server.Pages.IndexModel
 @{
@@ -15,7 +14,7 @@
     <link href="css/site.css" rel="stylesheet" />
 </head>
 <body>
-    <root>@(await Html.RenderComponentAsync<App>())</root>
+    <app>@(await Html.RenderComponentAsync<App>())</app>
 
     <script src="_framework/components.server.js"></script>
 </body>

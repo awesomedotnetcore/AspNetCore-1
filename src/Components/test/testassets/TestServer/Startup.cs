@@ -25,8 +25,7 @@ namespace TestServer
             {
                 options.AddPolicy("AllowAll", _ => { /* Controlled below */ });
             });
-            services.AddRazorComponents()
-                .AddComponent<Index>("root");
+            services.AddRazorComponents();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -49,7 +48,7 @@ namespace TestServer
                 // we're not relying on any extra magic inside UseServerSideBlazor, since it's
                 // important that people can set up these bits of middleware manually (e.g., to
                 // swap in UseAzureSignalR instead of UseSignalR).
-                subdirApp.UseSignalR(route => route.MapHub<ComponentsHub>(ComponentsHub.DefaultPath));
+                subdirApp.UseRouting(routes => routes.MapComponentsHub<Index>(ComponentsHub.DefaultPath, selector: "root"));
                 subdirApp.UseBlazor<BasicTestApp.Startup>();
             });
         }

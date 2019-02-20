@@ -30,9 +30,7 @@ namespace Microsoft.AspNetCore.Components.Browser.Rendering
             = new ConcurrentDictionary<long, AutoCancelTaskCompletionSource<object>>();
         private readonly ILogger _logger;
         private long _nextRenderId = 1;
-
-        private TaskCompletionSource<object> _prerrenderCompletionSource;
-        private Task _prerrendering = Task.CompletedTask;
+        private bool _prerrenderMode;
 
         /// <summary>
         /// Notifies when a rendering exception occured.
@@ -104,18 +102,7 @@ namespace Microsoft.AspNetCore.Components.Browser.Rendering
 
         internal void StartPrerrender()
         {
-            // We try and capture all the serialized render batches
-            _prerrenderCompletionSource = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
-            _prerrendering = _prerrenderCompletionSource.Task;
-        }
-
-        internal void ResumeRendering(IClientProxy proxy)
-        {
-            _client = proxy;
-            if (_prerrenderCompletionSource != null && !_prerrenderCompletionSource.Task.IsCompleted)
-            {
-                _prerrenderCompletionSource.SetResult(true);
-            }
+            _prerrenderMode = true;
         }
 
         /// <inheritdoc />
@@ -128,6 +115,14 @@ namespace Microsoft.AspNetCore.Components.Browser.Rendering
         /// <inheritdoc />
         protected override Task UpdateDisplayAsync(in RenderBatch batch)
         {
+            if (_prerrenderMode)
+            {
+                // Nothing to do in prerrender mode for right now.
+                // In the future we will capture all the serialized render batches and
+                // resend them to the client upon the initial reconnect.
+                return Task.CompletedTask;
+            }
+
             // Note that we have to capture the data as a byte[] synchronously here, because
             // SignalR's SendAsync can wait an arbitrary duration before serializing the params.
             // The RenderBatch buffer will get reused by subsequent renders, so we need to
@@ -146,15 +141,12 @@ namespace Microsoft.AspNetCore.Components.Browser.Rendering
             // the whole render with that exception
             try
             {
-                _prerrendering.ContinueWith(prerrenderTask =>
+                _client.SendAsync("JS.RenderBatch", _id, renderId, batchBytes).ContinueWith(sendTask =>
                 {
-                    _client.SendAsync("JS.RenderBatch", _id, renderId, batchBytes).ContinueWith(sendTask =>
+                    if (sendTask.IsFaulted)
                     {
-                        if (sendTask.IsFaulted)
-                        {
-                            pendingRenderInfo.TrySetException(sendTask.Exception);
-                        }
-                    });
+                        pendingRenderInfo.TrySetException(sendTask.Exception);
+                    }
                 });
             }
             catch (Exception syncException)

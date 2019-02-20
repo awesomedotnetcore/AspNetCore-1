@@ -16,8 +16,7 @@ namespace ComponentsApp.Server
         {
             services.AddMvc();
             services.AddSingleton<CircuitHandler, LoggingCircuitHandler>();
-            services.AddRazorComponents()
-                .AddComponent<App.App>("root");
+            services.AddRazorComponents();
 
             services.AddSingleton<WeatherForecastService, DefaultWeatherForecastService>();
         }
@@ -30,8 +29,11 @@ namespace ComponentsApp.Server
             }
 
             app.UseStaticFiles();
-            app.UseRazorComponents();
-            app.UseMvc();
+            app.UseRouting(builder =>
+            {
+                builder.MapRazorPages();
+                builder.MapComponentsHub<App.App>();
+            });
         }
     }
 }

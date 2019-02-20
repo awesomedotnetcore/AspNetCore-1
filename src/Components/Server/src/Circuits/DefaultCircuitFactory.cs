@@ -2,28 +2,23 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Linq;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Components.Browser;
 using Microsoft.AspNetCore.Components.Browser.Rendering;
 using Microsoft.AspNetCore.Components.Rendering;
-using Microsoft.AspNetCore.Components.Server.Builder;
 using Microsoft.AspNetCore.Components.Services;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.JSInterop;
 
 namespace Microsoft.AspNetCore.Components.Server.Circuits
 {
     internal class DefaultCircuitFactory : CircuitFactory
     {
-        private readonly ConcurrentDictionary<string, CircuitHost> _trackedHosts =
-            new ConcurrentDictionary<string, CircuitHost>();
-
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILoggerFactory _loggerFactory;
 
@@ -41,61 +36,30 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
             string uriAbsolute,
             string baseUriAbsolute)
         {
-            var circuitId = GetCircuitId(httpContext);
-            IJSRuntime jsRuntime;
-            CircuitHost circuitHost;
-            if (circuitId != null)
+            var metadata = ResolveComponentMetadata(httpContext, client);
+
+            var scope = _scopeFactory.CreateScope();
+            var encoder = scope.ServiceProvider.GetRequiredService<HtmlEncoder>();
+            var jsRuntime = (RemoteJSRuntime)scope.ServiceProvider.GetRequiredService<IJSRuntime>();
+            if (client != null)
             {
-                circuitHost = Untrack(circuitId);
-                UpdateHost(circuitHost, client, uriAbsolute, baseUriAbsolute);
-                jsRuntime = circuitHost.JSRuntime;
+                jsRuntime.Initialize(client);
+            }
+
+            var uriHelper = (RemoteUriHelper)scope.ServiceProvider.GetRequiredService<IUriHelper>();
+            if (client != null)
+            {
+                uriHelper.Initialize(uriAbsolute, baseUriAbsolute, jsRuntime);
             }
             else
             {
-                (jsRuntime, circuitHost) = CreateNewHost(client, uriAbsolute, baseUriAbsolute);
-                SetCircuitContext(jsRuntime, circuitHost);
-
-                Track(circuitHost);
-                httpContext.Response.Cookies.Append("Circuits.ConnectionId", circuitHost.CircuitId);
+                uriHelper.Initialize(uriAbsolute, baseUriAbsolute);
             }
 
-            return circuitHost;
-        }
-
-        private static void SetCircuitContext(IJSRuntime jsRuntime, CircuitHost circuitHost)
-        {
-            // Initialize per-circuit data that services need
-#pragma warning disable CS0618 // Type or member is obsolete
-            (circuitHost.Services.GetRequiredService<IJSRuntimeAccessor>() as DefaultJSRuntimeAccessor).JSRuntime = jsRuntime;
-#pragma warning restore CS0618 // Type or member is obsolete
-            (circuitHost.Services.GetRequiredService<ICircuitAccessor>() as DefaultCircuitAccessor).Circuit = circuitHost.Circuit;
-        }
-
-        private void UpdateHost(CircuitHost circuitHost, IClientProxy client, string uriAbsolute, string baseUriAbsolute)
-        {
-            circuitHost.Renderer.Invoke(() =>
-            {
-                var services = circuitHost.Services;
-                var jsRuntime = GetJavaScriptRuntime(client, services);
-                _ = GetUriHelper(jsRuntime, uriAbsolute, baseUriAbsolute, services);
-                circuitHost.Client = client;
-                SetCircuitContext(jsRuntime, circuitHost);
-                circuitHost.Renderer.ResumeRendering(client);
-            });
-        }
-
-        private (IJSRuntime, CircuitHost) CreateNewHost(IClientProxy client, string uriAbsolute, string baseUriAbsolute)
-        {
-            var scope = _scopeFactory.CreateScope();
-            var services = scope.ServiceProvider;
-            var jsRuntime = GetJavaScriptRuntime(client, services);
-            var uriHelper = GetUriHelper(jsRuntime, uriAbsolute, baseUriAbsolute, services);
-            var encoder = services.GetRequiredService<HtmlEncoder>();
-            var options = services.GetRequiredService<IOptions<RazorComponentsOptions>>();
             var rendererRegistry = new RendererRegistry();
             var dispatcher = Renderer.CreateDefaultDispatcher();
             var renderer = new RemoteRenderer(
-                services,
+                scope.ServiceProvider,
                 rendererRegistry,
                 jsRuntime,
                 client,
@@ -112,65 +76,44 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
                 client,
                 rendererRegistry,
                 renderer,
+                metadata.Components,
                 dispatcher,
-                options.Value,
                 jsRuntime,
                 circuitHandlers);
 
-            return (jsRuntime, circuitHost);
+            // Initialize per - circuit data that services need
+#pragma warning disable CS0618 // Type or member is obsolete
+            (circuitHost.Services.GetRequiredService<IJSRuntimeAccessor>() as DefaultJSRuntimeAccessor).JSRuntime = jsRuntime;
+#pragma warning restore CS0618 // Type or member is obsolete
+            (circuitHost.Services.GetRequiredService<ICircuitAccessor>() as DefaultCircuitAccessor).Circuit = circuitHost.Circuit;
+
+            return circuitHost;
         }
 
-        private string GetCircuitId(HttpContext httpContext)
+        private static RazorComponentsMetadata ResolveComponentMetadata(HttpContext httpContext, IClientProxy client)
         {
-            return httpContext.Request.Cookies["Circuits.ConnectionId"];
-        }
-
-        private void Track(CircuitHost circuitHost)
-        {
-            _trackedHosts.GetOrAdd(circuitHost.CircuitId, circuitHost);
-        }
-
-        private CircuitHost Untrack(string circuitId)
-        {
-            if (_trackedHosts.TryRemove(circuitId, out var circuitHost))
+            if (client != null)
             {
-                return circuitHost;
-            }
+                var endpointFeature = httpContext.Features.Get<IEndpointFeature>();
+                var endpoint = endpointFeature?.Endpoint;
+                if (endpoint == null)
+                {
+                    throw new InvalidOperationException("CompnentHub doesn't have an associated endpoint.");
+                }
 
-            return null;
-        }
-
-        private static IUriHelper GetUriHelper(RemoteJSRuntime jsRuntime, string uriAbsolute, string baseUriAbsolute, IServiceProvider scope)
-        {
-            var helper = scope.GetRequiredService<IUriHelper>();
-            var remoteUriHelper = helper as RemoteUriHelper;
-            if (helper != null && remoteUriHelper == null)
-            {
-                throw new InvalidOperationException($"The '{typeof(IUriHelper).Name}' has been overrided with an unsuitable implementation.");
-            }
-            else
-            {
-                remoteUriHelper.Initialize(uriAbsolute, baseUriAbsolute, jsRuntime);
-                return remoteUriHelper;
-            }
-        }
-
-        private static RemoteJSRuntime GetJavaScriptRuntime(IClientProxy client, IServiceProvider scope)
-        {
-            var runtime = scope.GetRequiredService<IJSRuntime>();
-            var jsRuntime = runtime as RemoteJSRuntime;
-            if (runtime != null && jsRuntime == null)
-            {
-                throw new InvalidOperationException($"The '{typeof(IJSRuntime).Name}' has been overrided with an unsuitable implementation.");
-            }
-            else if (client != null)
-            {
-                jsRuntime.Initialize(client);
-                return jsRuntime;
+                var componentsMetadata = endpoint.Metadata.GetMetadata<RazorComponentsMetadata>();
+                if (componentsMetadata == null)
+                {
+                    throw new InvalidOperationException("No component was added to the component hub.");
+                }
+                else
+                {
+                    return componentsMetadata;
+                }
             }
             else
             {
-                return jsRuntime;
+                return new RazorComponentsMetadata();
             }
         }
     }

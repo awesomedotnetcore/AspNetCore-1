@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components.Browser;
 using Microsoft.AspNetCore.Components.Browser.Rendering;
 using Microsoft.AspNetCore.Components.Rendering;
-using Microsoft.AspNetCore.Components.Server.Builder;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
@@ -21,7 +20,6 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
         private readonly IServiceScope _scope;
         private readonly IDispatcher _dispatcher;
         private readonly CircuitHandler[] _circuitHandlers;
-        private readonly RazorComponentsOptions _options;
         private bool _initialized;
 
         /// <summary>
@@ -54,8 +52,8 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
             IClientProxy client,
             RendererRegistry rendererRegistry,
             RemoteRenderer renderer,
+            IList<ComponentDescriptor> descriptors,
             IDispatcher dispatcher,
-            RazorComponentsOptions options,
             IJSRuntime jsRuntime,
             CircuitHandler[] circuitHandlers)
         {
@@ -63,8 +61,8 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
             _dispatcher = dispatcher;
             Client = client;
             RendererRegistry = rendererRegistry ?? throw new ArgumentNullException(nameof(rendererRegistry));
+            Descriptors = descriptors ?? throw new ArgumentNullException(nameof(descriptors));
             Renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
-            _options = options ?? throw new ArgumentNullException(nameof(options));
             JSRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
             
             Services = scope.ServiceProvider;
@@ -87,7 +85,7 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
         public RemoteRenderer Renderer { get; }
 
         public RendererRegistry RendererRegistry { get; }
-
+        public IList<ComponentDescriptor> Descriptors { get; }
         public IServiceProvider Services { get; }
 
         public Task<IEnumerable<string>> PrerrenderComponentAsync(Type componentType, ParameterCollection parameters)
@@ -107,9 +105,9 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
             {
                 SetCurrentCircuitHost(this);
 
-                for (var i = 0; i < _options.Components.Count; i++)
+                for (var i = 0; i < Descriptors.Count; i++)
                 {
-                    var (componentType, domElementSelector) = _options.Components[i];
+                    var (componentType, domElementSelector) = Descriptors[i];
                     await Renderer.AddComponentAsync(componentType, domElementSelector);
                 }
 
