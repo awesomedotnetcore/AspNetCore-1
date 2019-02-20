@@ -18,7 +18,6 @@
 
     <!-- These assemblies are only in the shared framework -->
     <AspNetCoreAppReference Include="Microsoft.AspNetCore" />
-    <AspNetCoreAppReference Include="Microsoft.AspNetCore.Components.Server.Abstractions" />
     <AspNetCoreAppReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" />
     <AspNetCoreAppReference Include="Microsoft.AspNetCore.Cryptography.Internal" />
     <AspNetCoreAppReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" />

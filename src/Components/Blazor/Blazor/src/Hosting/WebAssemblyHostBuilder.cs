@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using Microsoft.AspNetCore.Blazor.Services;
-using Microsoft.AspNetCore.Components.Environment;
 using Microsoft.AspNetCore.Components.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
@@ -91,9 +90,7 @@ namespace Microsoft.AspNetCore.Blazor.Hosting
             services.AddSingleton<IJSRuntime>(WebAssemblyJSRuntime.Instance);
 
             services.AddSingleton<IUriHelper>(WebAssemblyUriHelper.Instance);
-            services.AddSingleton<ComponentEnvironment, WebAssemblyComponentEnvironment>();
-
-            services.AddSingleton(s =>
+            services.AddSingleton<HttpClient>(s =>
             {
                 // Creating the URI helper needs to wait until the JS Runtime is initialized, so defer it.
                 var uriHelper = s.GetRequiredService<IUriHelper>();
@@ -110,16 +107,6 @@ namespace Microsoft.AspNetCore.Blazor.Hosting
 
             var builder = _serviceProviderFactory.CreateBuilder(services);
             _appServices = _serviceProviderFactory.CreateServiceProvider(builder);
-        }
-
-        private class WebAssemblyComponentEnvironment : ComponentEnvironment
-        {
-            public WebAssemblyComponentEnvironment(IJSRuntime jsRuntime, IUriHelper uriHelper)
-            {
-                Name = Local;
-                JSRuntime = jsRuntime;
-                UriHelper = uriHelper;
-            }
         }
     }
 }
