@@ -6,6 +6,8 @@ using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Server;
+using Microsoft.AspNetCore.Components.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.AspNetCore.Mvc.ViewFeatures.RazorComponents
 {
@@ -22,6 +24,8 @@ namespace Microsoft.AspNetCore.Mvc.ViewFeatures.RazorComponents
         {
             var dispatcher = Renderer.CreateDefaultDispatcher();
             var parameters = context.Parameters;
+            var helper = (HttpUriHelper)context.Context.RequestServices.GetRequiredService<IUriHelper>();
+            helper.InitializeState(context.Context);
             using (var htmlRenderer = new HtmlRenderer(context.Context.RequestServices, _encoder.Encode, dispatcher))
             {
                 return await dispatcher.InvokeAsync(() => htmlRenderer.RenderComponentAsync(

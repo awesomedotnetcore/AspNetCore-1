@@ -6,11 +6,12 @@ using System.IO;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Environment;
 using Microsoft.AspNetCore.Components.RenderTree;
+using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Components.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewFeatures.RazorComponents;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Moq;
@@ -190,16 +191,20 @@ namespace Microsoft.AspNetCore.Mvc.ViewFeatures.Test
         {
             var services = new ServiceCollection();
             services.AddSingleton(HtmlEncoder.Default);
-            services.AddSingleton<MvcPrerrenderingContext>();
-            services.AddSingleton<ComponentEnvironment>();
-            services.AddSingleton(sp => sp.GetRequiredService<ComponentEnvironment>().JSRuntime);
-            services.AddSingleton(sp => sp.GetRequiredService<ComponentEnvironment>().UriHelper);
+            services.AddSingleton<IJSRuntime,UnsupportedJavaScriptRuntime>();
+            services.AddSingleton<IUriHelper,HttpUriHelper>();
+            services.AddSingleton<IComponentPrerrenderer, MvcRazorComponentPrerrenderer>();
 
             configureServices?.Invoke(services);
 
             var helper = new Mock<IHtmlHelper>();
             var context = ctx ?? new DefaultHttpContext();
             context.RequestServices = services.BuildServiceProvider();
+            context.Request.Scheme = "http";
+            context.Request.Host = new HostString("localhost");
+            context.Request.PathBase = "/base";
+            context.Request.Path = "/path";
+            context.Request.QueryString = QueryString.FromUriComponent("?query=value");
 
             helper.Setup(h => h.ViewContext)
                 .Returns(new ViewContext()
