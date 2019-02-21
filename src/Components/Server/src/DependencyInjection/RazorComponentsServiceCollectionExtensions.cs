@@ -24,12 +24,6 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>The <see cref="IServiceCollection"/>.</returns>
         public static IServiceCollection AddRazorComponents(this IServiceCollection services)
         {
-            // We've discussed with the SignalR team and believe it's OK to have repeated
-            // calls to AddSignalR (making the nonfirst ones no-ops). If we want to change
-            // this in the future, we could change AddComponents to be an extension
-            // method on ISignalRServerBuilder so the developer always has to chain it onto
-            // their own AddSignalR call. For now we're keeping it like this because it's
-            // simpler for developers in common cases.
             services.AddSignalR().AddMessagePackProtocol();
 
             AddStandardRazorComponentsServices(services);
@@ -44,14 +38,18 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddScoped<IJSRuntimeAccessor, DefaultJSRuntimeAccessor>();
 #pragma warning restore CS0618 // Type or member is obsolete
             services.TryAddScoped<ICircuitAccessor, DefaultCircuitAccessor>();
-            services.AddScoped<IComponentPrerrenderer, CircuitPrerrenderer>();
-            return services;
-        }
 
-        private static void AddStandardRazorComponentsServices(IServiceCollection services)
-        {
+            // We explicitly take over the prerrendering and components services here.
+            // We can't have two separate component implementations coexisting at the
+            // same time, so when you register components (Circuits) it takes over
+            // all the abstractions.
+            services.AddScoped<IComponentPrerrenderer, CircuitPrerrenderer>();
+
+            // Standard razor component services implementations
             services.AddScoped<IUriHelper, RemoteUriHelper>();
             services.AddScoped<IJSRuntime, RemoteJSRuntime>();
+
+            return services;
         }
     }
 }

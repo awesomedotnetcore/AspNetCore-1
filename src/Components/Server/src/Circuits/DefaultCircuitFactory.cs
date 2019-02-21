@@ -101,7 +101,7 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
                     throw new InvalidOperationException("CompnentHub doesn't have an associated endpoint.");
                 }
 
-                var componentsMetadata = endpoint.Metadata.GetMetadata<RazorComponentsMetadata>();
+                var componentsMetadata = endpoint.Metadata.GetMetadata<ComponentDescriptor>();
                 if (componentsMetadata == null)
                 {
                     throw new InvalidOperationException("No component was added to the component hub.");
